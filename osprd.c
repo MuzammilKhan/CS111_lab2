@@ -121,7 +121,14 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 	// 'req->buffer' members, and the rq_data_dir() function.
 
 	// Your code here.
-	eprintk("Should process request...\n");
+	//eprintk("Should process request...\n");
+
+	osp_spin_lock(&d->mutex); 			//VERIFY: Is the use of this lock here correct?
+	if(rq_data_dir(req) == READ)
+		memcpy(req->buffer, d->data+(req->sector * SECTOR_SIZE), req->current_nr_sectors * SECTOR_SIZE);
+	else
+		memcpy(d->data+(req->sector * SECTOR_SIZE), req->buffer, req->current_nr_sectors * SECTOR_SIZE);
+	osp_spin_unlock(&d->mutex);         //VERIFY: Corresponding unlock
 
 	end_request(req, 1);
 }
