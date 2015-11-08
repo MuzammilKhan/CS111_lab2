@@ -64,6 +64,11 @@ typedef struct osprd_info {
 
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
+	uint write_lock_set[OSPRD_MAJOR];
+	uint read_lock_set[OSPRD_MAJOR];
+	
+	uint write_lock_set_size;
+	uint read_lock_set_size;
 
 	// The following elements are used internally; you don't need
 	// to understand them.
@@ -217,10 +222,49 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	// This line avoids compiler warnings; you may remove it.
 	(void) filp_writable, (void) d;
 
+	spinlock(mutex);
+	my_ticket = d->ticket_tail++;
+	spinunlock(mutex);
+
 	// Set 'r' to the ioctl's return value: 0 on success, negative on error
 
 	if (cmd == OSPRDIOCACQUIRE) {
 
+		
+		
+	
+		if (filp_writable) {	//attempt to write lock
+			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
+										&& d->write_lock_set_size == 0
+										&& d->read_lock_set_size == 0 ) {
+				//woken up by signal, returns -ERESTARTSYS
+				//TODO: MARK CURRENT THREAD AS NOT SERVED
+				return -ERESTARTSYS;
+			}
+			else {	//acquire write lock
+				spinlock(mutex);
+				filp->f_flags |= F_OSPRD_LOCKED;
+				d->write_lock_set[d->write_lock_set_size++] = current->pid;
+				spinunlock(mutex);
+			}
+		}
+		else {	//attempt to read lock
+			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
+										&& d->write_lock_set_size == 0) {
+				//woken up by signal, returns -ERESTARTSYS
+				//TODO: MARK CURRENT THREAD AS NOT SERVED
+				return -ERESTARTSYS;						
+			}
+			else {	//acquire read lock
+				spinlock(mutex);
+				filp->f_flags |= F_OSPRD_LOCKED;
+				d->read_lock_set[d->read_lock_set_size++] = current->pid;
+				spinunlock(mutex);
+			}
+		}
+		
+		return 0;
+		
 		// EXERCISE: Lock the ramdisk.
 		//
 		// If *filp is open for writing (filp_writable), then attempt
@@ -270,6 +314,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Otherwise, if we can grant the lock request, return 0.
 
 		// Your code here (instead of the next two lines).
+		
+		
+		
+		return 0;
+		
 		eprintk("Attempting to try acquire\n");
 		r = -ENOTTY;
 
@@ -299,7 +348,11 @@ static void osprd_setup(osprd_info_t *d)
 	init_waitqueue_head(&d->blockq);
 	osp_spin_lock_init(&d->mutex);
 	d->ticket_head = d->ticket_tail = 0;
+	
 	/* Add code here if you add fields to osprd_info_t. */
+	write_lock_set_size = 0;
+	read_lock_set_size = 0;
+	
 }
 
 
