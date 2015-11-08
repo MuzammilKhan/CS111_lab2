@@ -180,8 +180,9 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 	if (filp) 
 	{
 		osprd_info_t *d = file2osprd(filp);
-		int filp_writable = filp->f_mode & FMODE_WRITE;
+		int filp_writeable = filp->f_mode & FMODE_WRITE;
 		int filp_locked = filp->f_flags & F_OSPRD_LOCKED;
+		int counter;
 
 		if(filp_locked)
 		{
@@ -288,7 +289,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		if (filp_writable) {	//attempt to write lock
 			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
 										&& d->write_lock_set_size == 0
-										&& d->read_lock_set_size == 0 ) {
+						     && d->read_lock_set_size == 0 )) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
 				return -ERESTARTSYS;
@@ -302,7 +303,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		}
 		else {	//attempt to read lock
 			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
-										&& d->write_lock_set_size == 0) {
+						     && d->write_lock_set_size == 0)) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
 				return -ERESTARTSYS;						
@@ -334,7 +335,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		if (filp_writable) {	//attempt to write lock
 			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
 										&& d->write_lock_set_size == 0
-										&& d->read_lock_set_size == 0 ) {
+						     && d->read_lock_set_size == 0 )) {
 				//woken up by signal, returns -ERESTARTSYS
 				return -EBUSY;
 			}
@@ -347,7 +348,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		}
 		else {	//attempt to read lock
 			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
-										&& d->write_lock_set_size == 0) {
+						     && d->write_lock_set_size == 0)) {
 				//woken up by signal, returns -ERESTARTSYS
 				return -EBUSY;						
 			}
@@ -375,9 +376,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 		// Your code here (instead of the next line).
 		
-		r = file_unlock(filp)
+		r = file_unlock(filp);
 
-	} else
+	} else 
 		r = -ENOTTY; /* unknown command */
 	return r;
 }
@@ -394,8 +395,8 @@ static void osprd_setup(osprd_info_t *d)
 	d->ticket_head = d->ticket_tail = 0;
 	
 	/* Add code here if you add fields to osprd_info_t. */
-	write_lock_set_size = 0;
-	read_lock_set_size = 0;
+	d->write_lock_set_size = 0;
+	d->read_lock_set_size = 0;
 	
 }
 
