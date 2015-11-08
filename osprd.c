@@ -222,9 +222,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	// This line avoids compiler warnings; you may remove it.
 	(void) filp_writable, (void) d;
 
-	spinlock(&d->mutex);
+	osp_spin_lock(&d->mutex);
 	my_ticket = d->ticket_tail++;
-	spinunlock(&d->mutex);
+	osp_spin_unlock(&d->mutex);
 
 	int counter;
 
@@ -278,10 +278,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -ERESTARTSYS;
 			}
 			else {	//acquire write lock
-				spinlock(&d->mutex);
+				osp_spin_lock(&d->mutex);
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->write_lock_set[d->write_lock_set_size++] = current->pid;
-				spinunlock(&d->mutex);
+				osp_spin_unlock(&d->mutex);
 			}
 		}
 		else {	//attempt to read lock
@@ -292,10 +292,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -ERESTARTSYS;						
 			}
 			else {	//acquire read lock
-				spinlock(&d->mutex);
+				osp_spin_lock(&d->mutex);
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->read_lock_set[d->read_lock_set_size++] = current->pid;
-				spinunlock(&d->mutex);
+				osp_spin_unlock(&d->mutex);
 			}
 		}
 		
@@ -323,10 +323,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -EBUSY;
 			}
 			else {	//acquire write lock
-				spinlock(&d->mutex);
+				osp_spin_lock(&d->mutex);
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->write_lock_set[d->write_lock_set_size++] = current->pid;
-				spinunlock(&d->mutex);
+				osp_spin_unlock(&d->mutex);
 			}
 		}
 		else {	//attempt to read lock
@@ -336,10 +336,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -EBUSY;						
 			}
 			else {	//acquire read lock
-				spinlock(&d->mutex);
+				osp_spin_lock(&d->mutex);
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->read_lock_set[d->read_lock_set_size++] = current->pid;
-				spinunlock(&d->mutex);
+				osp_spin_unlock(&d->mutex);
 			}
 		}
 		
