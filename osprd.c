@@ -64,11 +64,11 @@ typedef struct osprd_info {
 
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
-	uint write_lock_set[OSPRD_MAJOR];
-	uint read_lock_set[OSPRD_MAJOR];
+	int write_lock_set[OSPRD_MAJOR];
+	int read_lock_set[OSPRD_MAJOR];
 	
-	uint write_lock_set_size;
-	uint read_lock_set_size;
+	unsigned write_lock_set_size;
+	unsigned read_lock_set_size;
 
 	// The following elements are used internally; you don't need
 	// to understand them.
@@ -222,49 +222,16 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	// This line avoids compiler warnings; you may remove it.
 	(void) filp_writable, (void) d;
 
-	spinlock(mutex);
+	spinlock(&d->mutex);
 	my_ticket = d->ticket_tail++;
-	spinunlock(mutex);
+	spinunlock(&d->mutex);
+
+	int counter;
 
 	// Set 'r' to the ioctl's return value: 0 on success, negative on error
 
 	if (cmd == OSPRDIOCACQUIRE) {
-
-		
-		
 	
-		if (filp_writable) {	//attempt to write lock
-			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
-										&& d->write_lock_set_size == 0
-										&& d->read_lock_set_size == 0 ) {
-				//woken up by signal, returns -ERESTARTSYS
-				//TODO: MARK CURRENT THREAD AS NOT SERVED
-				return -ERESTARTSYS;
-			}
-			else {	//acquire write lock
-				spinlock(mutex);
-				filp->f_flags |= F_OSPRD_LOCKED;
-				d->write_lock_set[d->write_lock_set_size++] = current->pid;
-				spinunlock(mutex);
-			}
-		}
-		else {	//attempt to read lock
-			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
-										&& d->write_lock_set_size == 0) {
-				//woken up by signal, returns -ERESTARTSYS
-				//TODO: MARK CURRENT THREAD AS NOT SERVED
-				return -ERESTARTSYS;						
-			}
-			else {	//acquire read lock
-				spinlock(mutex);
-				filp->f_flags |= F_OSPRD_LOCKED;
-				d->read_lock_set[d->read_lock_set_size++] = current->pid;
-				spinunlock(mutex);
-			}
-		}
-		
-		return 0;
-		
 		// EXERCISE: Lock the ramdisk.
 		//
 		// If *filp is open for writing (filp_writable), then attempt
@@ -301,6 +268,39 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// be protected by a spinlock; which ones?)
 
 		// Your code here (instead of the next two lines).
+		
+		if (filp_writable) {	//attempt to write lock
+			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
+										&& d->write_lock_set_size == 0
+										&& d->read_lock_set_size == 0 ) {
+				//woken up by signal, returns -ERESTARTSYS
+				//TODO: MARK CURRENT THREAD AS NOT SERVED
+				return -ERESTARTSYS;
+			}
+			else {	//acquire write lock
+				spinlock(&d->mutex);
+				filp->f_flags |= F_OSPRD_LOCKED;
+				d->write_lock_set[d->write_lock_set_size++] = current->pid;
+				spinunlock(&d->mutex);
+			}
+		}
+		else {	//attempt to read lock
+			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
+										&& d->write_lock_set_size == 0) {
+				//woken up by signal, returns -ERESTARTSYS
+				//TODO: MARK CURRENT THREAD AS NOT SERVED
+				return -ERESTARTSYS;						
+			}
+			else {	//acquire read lock
+				spinlock(&d->mutex);
+				filp->f_flags |= F_OSPRD_LOCKED;
+				d->read_lock_set[d->read_lock_set_size++] = current->pid;
+				spinunlock(&d->mutex);
+			}
+		}
+		
+		return 0;
+		
 		eprintk("Attempting to acquire\n");
 		r = -ENOTTY;
 
@@ -315,7 +315,33 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 		// Your code here (instead of the next two lines).
 		
-		
+		if (filp_writable) {	//attempt to write lock
+			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
+										&& d->write_lock_set_size == 0
+										&& d->read_lock_set_size == 0 ) {
+				//woken up by signal, returns -ERESTARTSYS
+				return -EBUSY;
+			}
+			else {	//acquire write lock
+				spinlock(&d->mutex);
+				filp->f_flags |= F_OSPRD_LOCKED;
+				d->write_lock_set[d->write_lock_set_size++] = current->pid;
+				spinunlock(&d->mutex);
+			}
+		}
+		else {	//attempt to read lock
+			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
+										&& d->write_lock_set_size == 0) {
+				//woken up by signal, returns -ERESTARTSYS
+				return -EBUSY;						
+			}
+			else {	//acquire read lock
+				spinlock(&d->mutex);
+				filp->f_flags |= F_OSPRD_LOCKED;
+				d->read_lock_set[d->read_lock_set_size++] = current->pid;
+				spinunlock(&d->mutex);
+			}
+		}
 		
 		return 0;
 		
@@ -332,12 +358,40 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// you need, and return 0.
 
 		// Your code here (instead of the next line).
+		
+		if ( !(filp->f_flags & F_OSPRD_LOCKED)) {
+			return -EINVAL;
+		}
+		
+		filp->f_flags = 0;
+		
+		if (filp_writeable) {	// need to release acquired write lock
+			d->write_lock_set_size--;
+			for (counter = 0; counter < OSPRD_MAJOR; counter++) {
+				if (d->write_lock_set[counter] == current->pid) {
+					d->write_lock_set[counter] = -1;
+				}
+			}
+		} else {
+			d->read_lock_set_size--;
+			for (counter = 0; counter < OSPRD_MAJOR; counter++) {
+				if (d->read_lock_set[counter] == current->pid) {
+					d->read_lock_set[counter] = -1;
+				}
+			}
+		}
+		
+		d->ticket_head++;
+		
+		return 0;
+		
 		r = -ENOTTY;
 
 	} else
 		r = -ENOTTY; /* unknown command */
 	return r;
 }
+
 
 
 // Initialize internal fields for an osprd_info_t.
