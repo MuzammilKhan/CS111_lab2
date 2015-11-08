@@ -34,7 +34,7 @@
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_DESCRIPTION("CS 111 RAM Disk");
 // EXERCISE: Pass your names into the kernel as the module's authors.
-MODULE_AUTHOR("Skeletor");
+MODULE_AUTHOR("Andy (Bo-Yun) Shih and Muzammil Khan");
 
 #define OSPRD_MAJOR	222
 
@@ -172,6 +172,34 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 /*
  * osprd_lock
  */
+ static int file_unlock(struct file *filp)
+ {
+	if (filp) 
+	{
+		osprd_info_t *d = file2osprd(filp);
+		int filp_writable = filp->f_mode & FMODE_WRITE;
+		int filp_locked = filp->f_flags & F_OSPRD_LOCKED;
+
+		if(filp_locked)
+		{
+			osp_spin_lock(&d->mutex);
+			if(d->ticket_head < d->ticket_tail)
+				d->ticket_head++;
+			else
+				d->ticket_head = 0; // VERIFY: is this correct behaviour if head == tail
+
+			//NOTE NEED TO ADD SOMETHING HERE
+			osp_spin_unlock(&d->mutex);
+
+			//set flag to unlock
+			filp->f_flags &= ~F_OSPRD_LOCKED;
+			wake_up_all(&d->blockq);
+			return 0;
+		}
+	}
+
+	return -EINVAL; //return invalid argument, as filp was NULL
+ }
 
 /*
  * osprd_ioctl(inode, filp, cmd, arg)
