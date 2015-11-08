@@ -239,7 +239,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	(void) filp_writable, (void) d;
 
 	osp_spin_lock(&d->mutex);
-	my_ticket = d->ticket_tail++;
+	unsigned my_ticket = d->ticket_tail++;
 	osp_spin_unlock(&d->mutex);
 
 	int counter;
