@@ -104,6 +104,13 @@ static void for_each_open_file(struct task_struct *task,
 						osprd_info_t *user_data),
 			       osprd_info_t *user_data);
 
+/*
+ * Releases read/write on a file. This also sets
+ * the appropriate flag and osprd_info_t data and
+ * if the file was locked wakes up the wait queue.
+ * Return 0 if successful and -EINVAL if filp is NULL or not locked
+  */
+ static int file_unlock(struct file *filp);
 
 /*
  * osprd_process_request(d, req)
@@ -155,22 +162,13 @@ static int osprd_open(struct inode *inode, struct file *filp)
 // last copy is closed.)
 static int osprd_close_last(struct inode *inode, struct file *filp)
 {
-	if (filp) {
-		osprd_info_t *d = file2osprd(filp);
-		int filp_writable = filp->f_mode & FMODE_WRITE;
 
 		// EXERCISE: If the user closes a ramdisk file that holds
 		// a lock, release the lock.  Also wake up blocked processes
 		// as appropriate.
 
-		// Your code here.
-
-		// This line avoids compiler warnings; you may remove it.
-		(void) filp_writable, (void) d;
-
-	}
-
-	return 0;
+	return file_unlock(filp); // VERIFY: Is it correct to return this?
+	//return 0;
 }
 
 
@@ -188,6 +186,24 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		if(filp_locked)
 		{
 			osp_spin_lock(&d->mutex);
+
+			if (filp_writeable) 
+			{	// need to release acquired write lock
+				d->write_lock_set_size--;
+				for (counter = 0; counter < OSPRD_MAJOR; counter++) {
+					if (d->write_lock_set[counter] == current->pid) {
+						d->write_lock_set[counter] = -1;
+					}
+				}
+			} 
+			else {
+				d->read_lock_set_size--;
+				for (counter = 0; counter < OSPRD_MAJOR; counter++) {
+					if (d->read_lock_set[counter] == current->pid) {
+						d->read_lock_set[counter] = -1;
+					}
+				}
+			}
 			if(d->ticket_head < d->ticket_tail)
 				d->ticket_head++;
 			else
@@ -203,7 +219,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		}
 	}
 
-	return -EINVAL; //return invalid argument, as filp was NULL
+	return -EINVAL; //return invalid argument, as filp was NULL or unlocked
  }
 
 /*
@@ -359,33 +375,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 		// Your code here (instead of the next line).
 		
-		if ( !(filp->f_flags & F_OSPRD_LOCKED)) {
-			return -EINVAL;
-		}
-		
-		filp->f_flags = 0;
-		
-		if (filp_writeable) {	// need to release acquired write lock
-			d->write_lock_set_size--;
-			for (counter = 0; counter < OSPRD_MAJOR; counter++) {
-				if (d->write_lock_set[counter] == current->pid) {
-					d->write_lock_set[counter] = -1;
-				}
-			}
-		} else {
-			d->read_lock_set_size--;
-			for (counter = 0; counter < OSPRD_MAJOR; counter++) {
-				if (d->read_lock_set[counter] == current->pid) {
-					d->read_lock_set[counter] = -1;
-				}
-			}
-		}
-		
-		d->ticket_head++;
-		
-		return 0;
-		
-		r = -ENOTTY;
+		r = file_unlock(filp)
 
 	} else
 		r = -ENOTTY; /* unknown command */
