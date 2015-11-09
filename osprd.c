@@ -239,10 +239,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	// This line avoids compiler warnings; you may remove it.
 	(void) filp_writable, (void) d;
 
-	osp_spin_lock(&d->mutex);
-	unsigned my_ticket = d->ticket_tail++;
-	osp_spin_unlock(&d->mutex);
-
 	int counter;
 
 	// Set 'r' to the ioctl's return value: 0 on success, negative on error
@@ -285,6 +281,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// be protected by a spinlock; which ones?)
 
 		// Your code here (instead of the next two lines).
+
+	        osp_spin_lock(&d->mutex);
+	        unsigned my_ticket = d->ticket_tail++;
+	        osp_spin_unlock(&d->mutex);
 		
 		if (filp_writable) {	//attempt to write lock
 			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
@@ -333,7 +333,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Your code here (instead of the next two lines).
 		
 		if (filp_writable) {	//attempt to write lock
-		  if (my_ticket == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
+		  if (d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
 		  	osp_spin_lock(&d->mutex);
 			filp->f_flags |= F_OSPRD_LOCKED;
 			d->write_lock_set[d->write_lock_set_size++] = current->pid;
@@ -344,7 +344,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		  }
     		}
 		else {	//attempt to read lock
-		  if (my_ticket == d->ticket_head && d->write_lock_set_size == 0) {
+		  if (d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0) {
 		    osp_spin_lock(&d->mutex);
 		    filp->f_flags |= F_OSPRD_LOCKED;
 		    d->read_lock_set[d->read_lock_set_size++] = current->pid;
