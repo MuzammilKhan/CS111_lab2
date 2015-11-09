@@ -347,6 +347,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Otherwise, if we can grant the lock request, return 0.
 
 		// Your code here (instead of the next two lines).
+
+		if(filp->f_flags & F_OSPRD_LOCKED) 
+		{
+			return -EDEADLK;
+		}
 		
 		if (filp_writable) {	//attempt to write lock
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
