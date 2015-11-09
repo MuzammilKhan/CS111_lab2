@@ -70,6 +70,8 @@ typedef struct osprd_info {
 	unsigned write_lock_set_size;
 	unsigned read_lock_set_size;
 
+        int dead_ticket_set[OSPRD_MAJOR];
+
 	// The following elements are used internally; you don't need
 	// to understand them.
 	struct request_queue *queue;    // The device request queue.
@@ -223,6 +225,18 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 	return -EINVAL; //return invalid argument, as filp was NULL or unlocked
  }
 
+
+//updates ticket head to skip bubbles
+int update_ticket_head(unsigned* ticket_head, int* dead_ticket_set) {
+  int i = *ticket_head;
+  while (i < OSPRD_MAJOR && dead_ticket_set[i] == 1) {
+    i++;
+  }
+  *ticket_head = i;
+  return 1;
+}
+
+
 /*
  * osprd_ioctl(inode, filp, cmd, arg)
  *   Called to perform an ioctl on the named file.
@@ -287,11 +301,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	        osp_spin_unlock(&d->mutex);
 		
 		if (filp_writable) {	//attempt to write lock
-			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
+		  if (wait_event_interruptible(d->blockq, update_ticket_head(&(d->ticket_head), d->dead_ticket_set) &&  my_ticket == d->ticket_head
 										&& d->write_lock_set_size == 0
 						     && d->read_lock_set_size == 0 )) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
+			        d->dead_ticket_set[my_ticket] = 1;
 				return -ERESTARTSYS;
 			}
 			else {	//acquire write lock
@@ -302,10 +317,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			}
 		}
 		else {	//attempt to read lock
-			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
+		  if (wait_event_interruptible(d->blockq, update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && my_ticket == d->ticket_head
 						     && d->write_lock_set_size == 0)) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
+			        d->dead_ticket_set[my_ticket] = 1;
 				return -ERESTARTSYS;						
 			}
 			else {	//acquire read lock
@@ -333,7 +349,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Your code here (instead of the next two lines).
 		
 		if (filp_writable) {	//attempt to write lock
-		  if (d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
+		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
 		  	osp_spin_lock(&d->mutex);
 			filp->f_flags |= F_OSPRD_LOCKED;
 			d->write_lock_set[d->write_lock_set_size++] = my_ticket;
@@ -344,7 +360,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		  }
     		}
 		else {	//attempt to read lock
-		  if (d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0) {
+		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0) {
 		    osp_spin_lock(&d->mutex);
 		    filp->f_flags |= F_OSPRD_LOCKED;
 		    d->read_lock_set[d->read_lock_set_size++] = my_ticket;
@@ -393,6 +409,11 @@ static void osprd_setup(osprd_info_t *d)
 	d->write_lock_set_size = 0;
 	d->read_lock_set_size = 0;
 	
+        int i;
+	for (i = 0; i < OSPRD_MAJOR; i++) {
+	  d->dead_ticket_set[i] = 0;
+	}
+
 }
 
 
