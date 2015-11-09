@@ -344,7 +344,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		  }
     		}
 		else {	//attempt to read lock
-		  if (my_ticket == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == ) {
+		  if (my_ticket == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
 		    osp_spin_lock(&d->mutex);
 		    filp->f_flags |= F_OSPRD_LOCKED;
 		    d->read_lock_set[d->read_lock_set_size++] = current->pid;
