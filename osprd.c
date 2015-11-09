@@ -333,31 +333,26 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Your code here (instead of the next two lines).
 		
 		if (filp_writable) {	//attempt to write lock
-			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
-										&& d->write_lock_set_size == 0
-						     && d->read_lock_set_size == 0 )) {
-				//woken up by signal, returns -ERESTARTSYS
-				return -EBUSY;
-			}
-			else {	//acquire write lock
-				osp_spin_lock(&d->mutex);
-				filp->f_flags |= F_OSPRD_LOCKED;
-				d->write_lock_set[d->write_lock_set_size++] = current->pid;
-				osp_spin_unlock(&d->mutex);
-			}
-		}
+		  if (my_ticket == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
+		  	osp_spin_lock(&d->mutex);
+			filp->f_flags |= F_OSPRD_LOCKED;
+			d->write_lock_set[d->write_lock_set_size++] = current->pid;
+			osp_spin_unlock(&d->mutex);
+		  }
+		  else {
+		    return -EBUSY;
+		  }
+    		}
 		else {	//attempt to read lock
-			if (wait_event_interruptible(d->blockq, my_ticket == d->ticket_head
-						     && d->write_lock_set_size == 0)) {
-				//woken up by signal, returns -ERESTARTSYS
-				return -EBUSY;						
-			}
-			else {	//acquire read lock
-				osp_spin_lock(&d->mutex);
-				filp->f_flags |= F_OSPRD_LOCKED;
-				d->read_lock_set[d->read_lock_set_size++] = current->pid;
-				osp_spin_unlock(&d->mutex);
-			}
+		  if (my_ticket == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == ) {
+		    osp_spin_lock(&d->mutex);
+		    filp->f_flags |= F_OSPRD_LOCKED;
+		    d->read_lock_set[d->read_lock_set_size++] = current->pid;
+		    osp_spin_unlock(&d->mutex);
+		  }
+		  else {
+		    return -EBUSY;
+		  }
 		}
 		
 		return 0;
