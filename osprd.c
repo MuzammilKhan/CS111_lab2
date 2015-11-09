@@ -352,6 +352,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
 		  	osp_spin_lock(&d->mutex);
 			filp->f_flags |= F_OSPRD_LOCKED;
+			d->write_lock_set[d->write_lock_set_size++] = d->ticket_tail;
 			osp_spin_unlock(&d->mutex);
 		  }
 		  else {
@@ -362,6 +363,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0) {
 		    osp_spin_lock(&d->mutex);
 		    filp->f_flags |= F_OSPRD_LOCKED;
+		    d->read_lock_set[d->read_lock_set_size++] = d->ticket_tail;
 		    osp_spin_unlock(&d->mutex);
 		  }
 		  else {
