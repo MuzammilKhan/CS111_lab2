@@ -352,6 +352,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		{
 			return -EDEADLK;
 		}
+
+		if(d->read_lock_set_size > 0)
+			{return -EBUSY;}
 		
 		if (filp_writable) {	//attempt to write lock
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
