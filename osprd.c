@@ -404,7 +404,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// you need, and return 0.
 
 		// Your code here (instead of the next line).
-		
+		eprintk("Unlocking ramdisk\n"); //REMOVE
 		r = file_unlock(filp);
 
 	} else 
