@@ -169,6 +169,7 @@ close FOO;
     
     # 18
     [ #Test for device busy
+      '(./osprdaccess -r 4 -l -d 5) &' .
       '(echo bar | ./osprdaccess -w -L)',
       "ioctl OSPRDIOCTRYACQUIRE: Device or resource busy"
     ],
