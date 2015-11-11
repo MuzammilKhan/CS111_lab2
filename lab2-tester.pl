@@ -166,6 +166,17 @@ close FOO;
       ') 2>/dev/null',
       "aX"
     ],
+    
+    # 18
+    [ #Test for device busy
+      'echo bar | ./osprdaccess -w -L'
+    ],
+    
+    # 19
+    [ #Test for deadlock
+      'echo foo | ./osprdaccess -w -l /dev/osprda /dev/osprda'
+    ],
+    
     );
 
 my($ntest) = 0;
