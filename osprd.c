@@ -209,7 +209,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 			}
 			if(d->ticket_head < d->ticket_tail)
 				d->ticket_head++;
-			else if(d->ticket_head >= d->ticket_tail)
+			else
 				d->ticket_head = 0; // VERIFY: is this correct behaviour if head == tail
 
 			//NOTE NEED TO ADD SOMETHING HERE
