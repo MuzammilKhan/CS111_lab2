@@ -297,6 +297,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Your code here (instead of the next two lines).
 			eprintk("Entered OSPRDIOCACQUIRE\n"); //REMOVE
 	        osp_spin_lock(&d->mutex);
+	        eprintk("bp 1\n"); //REMOVE
 	        unsigned my_ticket = d->ticket_tail++;
 	        osp_spin_unlock(&d->mutex);
 		
@@ -306,12 +307,14 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 						     && d->read_lock_set_size == 0 )) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
+		  		eprintk("bp 2\n"); //REMOVE
 			        d->dead_ticket_set[my_ticket] = 1;
 				return -ERESTARTSYS;
 			}
 			else {	//acquire write lock
 				eprintk("OSPRDIOCACQUIRE Writelock\n"); //REMOVE
 				osp_spin_lock(&d->mutex);
+				eprintk("bp 3\n"); //REMOVE
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->write_lock_set[d->write_lock_set_size++] = my_ticket;
 				osp_spin_unlock(&d->mutex);
@@ -322,12 +325,14 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 						     && d->write_lock_set_size == 0)) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
+		  	eprintk("bp 4\n"); //REMOVE
 			        d->dead_ticket_set[my_ticket] = 1;
 				return -ERESTARTSYS;						
 			}
 			else {	//acquire read lock
 				eprintk("OSPRDIOCACQUIRE Readlock\n"); //REMOVE
 				osp_spin_lock(&d->mutex);
+				eprintk("bp 5\n"); //REMOVE
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->read_lock_set[d->read_lock_set_size++] = my_ticket;
 				osp_spin_unlock(&d->mutex);
@@ -373,11 +378,13 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
 		  	osp_spin_lock(&d->mutex);
 		  	eprintk("TRYACQUIRE WRTIELOCKING\n"); //REMOVE
+		  	eprintk("bp 6\n"); //REMOVE
 			filp->f_flags |= F_OSPRD_LOCKED;
 			d->write_lock_set[d->write_lock_set_size++] = d->ticket_tail;
 			osp_spin_unlock(&d->mutex);
 		  }
 		  else {
+		  	eprintk("bp 7\n"); //REMOVE
 		    return -EBUSY;
 		  }
     		}
@@ -385,11 +392,13 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0) {
 		    osp_spin_lock(&d->mutex);
 		    eprintk("TRYACQUIRE READLOCKING\n"); //REMOVE
+		    eprintk("bp 8\n"); //REMOVE
 		    filp->f_flags |= F_OSPRD_LOCKED;
 		    d->read_lock_set[d->read_lock_set_size++] = d->ticket_tail;
 		    osp_spin_unlock(&d->mutex);
 		  }
 		  else {
+		  	eprintk("bp 9\n"); //REMOVE
 		    return -EBUSY;
 		  }
 		}
