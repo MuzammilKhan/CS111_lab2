@@ -209,9 +209,10 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 			}
 			if(d->ticket_head < d->ticket_tail)
 				d->ticket_head++;
-			else
+			else {
 				d->ticket_head = 0; // VERIFY: is this correct behaviour if head == tail
-
+				d->ticket_tail = 0;
+			}
 			//NOTE NEED TO ADD SOMETHING HERE
 			osp_spin_unlock(&d->mutex);
 
