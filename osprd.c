@@ -313,9 +313,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -ERESTARTSYS;
 			}
 			else {	//acquire write lock
-				
+				if(filp->f_flags & F_OSPRD_LOCKED) 
+					return -EDEADLK;				
 				osp_spin_lock(&d->mutex);
-				
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->write_lock_set[d->write_lock_set_size++] = my_ticket;
 				osp_spin_unlock(&d->mutex);
@@ -331,9 +331,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -ERESTARTSYS;						
 			}
 			else {	//acquire read lock
-				
+				if(filp->f_flags & F_OSPRD_LOCKED) 
+					return -EDEADLK;				
 				osp_spin_lock(&d->mutex);
-				
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->read_lock_set[d->read_lock_set_size++] = my_ticket;
 				osp_spin_unlock(&d->mutex);
@@ -359,10 +359,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		
 
 		if(filp->f_flags & F_OSPRD_LOCKED) 
-		{
-			eprintk("DEADLOCK\n");
 			return -EDEADLK;
-		}
 
 		// if only a read lock request this doesn't work
 		// if(d->read_lock_set_size > 0 || d->write_lock_set_size > 0) 
