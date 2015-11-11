@@ -363,11 +363,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			return -EDEADLK;
 		}
 
-		if(d->read_lock_set_size > 0 || d->write_lock_set_size > 0)
-			{
-				eprintk("BUSY\n"); //REMOVE
-				return -EBUSY;
-			}
+		// if only a read lock request this doesn't work
+		// if(d->read_lock_set_size > 0 || d->write_lock_set_size > 0) 
+		// 	{
+		// 		eprintk("BUSY\n"); //REMOVE
+		// 		return -EBUSY;
+		// 	}
 		
 		if(signal_pending(current)) //REMOVE this, was just testing
 		{
