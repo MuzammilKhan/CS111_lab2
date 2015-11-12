@@ -311,17 +311,15 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 		// Your code here (instead of the next two lines).
 			eprintk("break point 1\n");
-	        osp_spin_lock(&d->mutex);
-	       
-	        unsigned my_ticket = d->ticket_tail++;
-	        osp_spin_unlock(&d->mutex);
-		
 	        if(d->lock_holder_pid == current->pid)
 			{
 				eprintk("break point 2\n");
 				return -EDEADLK;
 			}
 
+                osp_spin_lock(&d->mutex);
+		unsigned my_ticket = d->ticket_tail++;
+		osp_spin_unlock(&d->mutex);
 
 		if (filp_writable) {	//attempt to write lock
 		  if (wait_event_interruptible(d->blockq, update_ticket_head(&(d->ticket_head), d->dead_ticket_set) &&  my_ticket == d->ticket_head
@@ -401,12 +399,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// 		return -EBUSY;
 		// 	}
 		
-		if(signal_pending(current)) //REMOVE this, was just testing
-		{
-			eprintk("break point 9\n");
-			return -ERESTARTSYS;
-		}
-
 		if (filp_writable) {	//attempt to write lock
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
 		  	eprintk("break point 10\n");
