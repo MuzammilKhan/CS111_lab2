@@ -306,7 +306,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	        unsigned my_ticket = d->ticket_tail++;
 	        osp_spin_unlock(&d->mutex);
 		
-
+	        if(d->lock_holder_pid == current->pid)
+			{
+				return -EDEADLK;
+			}
 
 
 		if (filp_writable) {	//attempt to write lock
@@ -320,10 +323,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -ERESTARTSYS;
 			}
 			else {	//acquire write lock
-				if(d->lock_holder_pid == current->pid)
-				{
-					return -EDEADLK;
-				}
+
 				if(filp->f_flags & F_OSPRD_LOCKED) 
 					return -EDEADLK;				
 				osp_spin_lock(&d->mutex);
@@ -343,10 +343,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -ERESTARTSYS;						
 			}
 			else {	//acquire read lock
-				if(d->lock_holder_pid == current->pid)
-				{
-					return -EDEADLK;
-				}
+
 				if(filp->f_flags & F_OSPRD_LOCKED) 
 					return -EDEADLK;				
 				osp_spin_lock(&d->mutex);
