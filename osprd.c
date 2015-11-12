@@ -358,8 +358,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 		
 
-		if(filp->f_flags & F_OSPRD_LOCKED) 
-			return -EDEADLK;
+		if(filp->f_flags & F_OSPRD_LOCKED) //If OSPRDIOCACQUIRE would block or return deadlock, OSPRDIOCTRYACQUIRE should return -EBUSY
+			return -EBUSY;
 
 		// if only a read lock request this doesn't work
 		// if(d->read_lock_set_size > 0 || d->write_lock_set_size > 0) 
