@@ -185,7 +185,6 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
  {
 	if (filp) 
 	{
-		eprintk("file unlock breakpoint 1\n");
 		osprd_info_t *d = file2osprd(filp);
 		int filp_writeable = filp->f_mode & FMODE_WRITE;
 		int filp_locked = filp->f_flags & F_OSPRD_LOCKED;
@@ -193,12 +192,10 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 
 		if(filp_locked)
 		{
-			eprintk("file unlock breakpoint 2\n");
 			osp_spin_lock(&d->mutex);
 			d->lock_holder_pid = -1;
 			if (filp_writeable) 
 			{	// need to release acquired write lock
-				eprintk("file unlock breakpoint 3\n");
 				d->write_lock_set_size--;
 				for (counter = 0; counter < OSPRD_MAJOR; counter++) {
 					if (d->write_lock_set[counter] == current->pid) {
@@ -207,7 +204,6 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 				}
 			} 
 			else {
-				eprintk("file unlock breakpoint 4\n");
 				d->read_lock_set_size--;
 				for (counter = 0; counter < OSPRD_MAJOR; counter++) {
 					if (d->read_lock_set[counter] == current->pid) {
@@ -216,11 +212,9 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 				}
 			}
 			if(d->ticket_head < d->ticket_tail){
-				eprintk("file unlock breakpoint 5\n");
 				d->ticket_head++;
 			}
 			else {
-				eprintk("file unlock breakpoint 6\n");
 				d->ticket_head = 0; // VERIFY: is this correct behaviour if head == tail
 				d->ticket_tail = 0;
 			}
@@ -230,13 +224,10 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 			//set flag to unlock
 			filp->f_flags &= ~F_OSPRD_LOCKED;
 			wake_up_all(&d->blockq);
-			eprintk("file unlock breakpoint 7\n");
 			return 0;
 		}
-		eprintk("file unlock breakpoint 8\n");
 	}
 
-	eprintk("file unlock breakpoint 9\n");
 	return -EINVAL; //return invalid argument, as filp was NULL or unlocked
  }
 
@@ -310,10 +301,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// be protected by a spinlock; which ones?)
 
 		// Your code here (instead of the next two lines).
-			eprintk("break point 1\n");
 	        if(d->lock_holder_pid == current->pid)
 			{
-				eprintk("break point 2\n");
 				return -EDEADLK;
 			}
 
@@ -327,14 +316,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 						     && d->read_lock_set_size == 0 )) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
-		  		eprintk("break point 2.5 Recieved signal\n");
 			        d->dead_ticket_set[my_ticket] = 1;
 				return -ERESTARTSYS;
 			}
 			else {	//acquire write lock
-				eprintk("break point 3\n");
 				if(filp->f_flags & F_OSPRD_LOCKED){
-					eprintk("break point 4\n"); 
 					return -EDEADLK;
 					}				
 				osp_spin_lock(&d->mutex);
@@ -349,14 +335,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 						     && d->write_lock_set_size == 0)) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
-		  		eprintk("break point 4.5 Recieved signal\n");
 			        d->dead_ticket_set[my_ticket] = 1;
 				return -ERESTARTSYS;						
 			}
 			else {	//acquire read lock
-				eprintk("break point 5\n");
 				if(filp->f_flags & F_OSPRD_LOCKED) {
-					eprintk("break point 6\n");
 					return -EDEADLK;				
 				}
 				osp_spin_lock(&d->mutex);
@@ -382,10 +365,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Otherwise, if we can grant the lock request, return 0.
 
 		// Your code here (instead of the next two lines).
-		eprintk("break point 7\n");
 		if(d->lock_holder_pid == current->pid)
 		{
-			eprintk("break point 8\n");
 			return -EBUSY;
 		}
 
@@ -401,7 +382,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		
 		if (filp_writable) {	//attempt to write lock
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0 && d->read_lock_set_size == 0) {
-		  	eprintk("break point 10\n");
 		  	osp_spin_lock(&d->mutex);
 			filp->f_flags |= F_OSPRD_LOCKED;
 			d->write_lock_set[d->write_lock_set_size++] = d->ticket_tail;
@@ -409,13 +389,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			osp_spin_unlock(&d->mutex);
 		  }
 		  else {
-		  	eprintk("break point 11\n");
 		    return -EBUSY;
 		  }
     		}
 		else {	//attempt to read lock
 		  if (update_ticket_head(&(d->ticket_head), d->dead_ticket_set) && d->ticket_tail == d->ticket_head && d->write_lock_set_size == 0) {
-		  	eprintk("break point 12\n");
 		    osp_spin_lock(&d->mutex);
 		    filp->f_flags |= F_OSPRD_LOCKED;
 		    d->read_lock_set[d->read_lock_set_size++] = d->ticket_tail;
@@ -423,7 +401,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		    osp_spin_unlock(&d->mutex);
 		  }
 		  else {
-		  	eprintk("break point 13\n");
 		    return -EBUSY;
 		  }
 		}
@@ -443,7 +420,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// you need, and return 0.
 
 		// Your code here (instead of the next line).
-		eprintk("break point 14\n");
 		r = file_unlock(filp);
 
 	} else 
