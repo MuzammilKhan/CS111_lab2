@@ -230,10 +230,13 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 			//set flag to unlock
 			filp->f_flags &= ~F_OSPRD_LOCKED;
 			wake_up_all(&d->blockq);
+			eprintk("file unlock breakpoint 7\n");
 			return 0;
 		}
+		eprintk("file unlock breakpoint 8\n");
 	}
 
+	eprintk("file unlock breakpoint 9\n");
 	return -EINVAL; //return invalid argument, as filp was NULL or unlocked
  }
 
