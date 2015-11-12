@@ -176,7 +176,7 @@ close FOO;
     # 19
     [ #Test for deadlock
       '(echo foo | ./osprdaccess -w -l /dev/osprda /dev/osprda)',
-      "ioctl OSPRDIOCTRYACQUIRE: Device or resource busy "
+      "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
     ],
     
     );
