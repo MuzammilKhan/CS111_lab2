@@ -467,7 +467,7 @@ static void osprd_setup(osprd_info_t *d)
 	  d->dead_ticket_set[i] = 0;
 	}
 
-	lock_holder_pid = -1;
+	d->lock_holder_pid = -1;
 
 }
 
