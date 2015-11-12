@@ -169,22 +169,15 @@ close FOO;
     
     # 18
     [ #Test for device busy
-      '(./osprdaccess -r 4 -l -d 5) & ' .
-      '(echo bar | ./osprdaccess -w -L)',
+      '(./osprdaccess -r 4 -l -d 5) & (echo bar | ./osprdaccess -w -L)',
       "ioctl OSPRDIOCTRYACQUIRE: Device or resource busy "
     ],
     
     # 19
     [ #Test for deadlock
       '(echo foo | ./osprdaccess -w -l /dev/osprda /dev/osprda)',
-      "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
+      "ioctl OSPRDIOCTRYACQUIRE: Device or resource busy "
     ],
-
-    #sanity check
-    [ '(echo test1 | ./osprdaccess -w) && ' .
-      '(./osprdaccess -r 16 | hexdump -C)',
-      "00000000 74 65 73 74 31 0a 00 00 00 00 00 00 00 00 00 00 |test1...........| " .
-      "00000010" ],
     
     );
 
