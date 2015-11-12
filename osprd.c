@@ -70,7 +70,9 @@ typedef struct osprd_info {
 	unsigned write_lock_set_size;
 	unsigned read_lock_set_size;
 
-        int dead_ticket_set[OSPRD_MAJOR];
+     int dead_ticket_set[OSPRD_MAJOR];
+
+     int lock_holder_pid;
 
 	// The following elements are used internally; you don't need
 	// to understand them.
@@ -177,6 +179,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 /*
  * osprd_lock
  */
+
+
  static int file_unlock(struct file *filp)
  {
 	if (filp) 
@@ -189,7 +193,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		if(filp_locked)
 		{
 			osp_spin_lock(&d->mutex);
-
+			d->lock_holder_pid = -1;
 			if (filp_writeable) 
 			{	// need to release acquired write lock
 				d->write_lock_set_size--;
@@ -302,6 +306,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	        unsigned my_ticket = d->ticket_tail++;
 	        osp_spin_unlock(&d->mutex);
 		
+
+
+
 		if (filp_writable) {	//attempt to write lock
 		  if (wait_event_interruptible(d->blockq, update_ticket_head(&(d->ticket_head), d->dead_ticket_set) &&  my_ticket == d->ticket_head
 										&& d->write_lock_set_size == 0
@@ -313,11 +320,16 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -ERESTARTSYS;
 			}
 			else {	//acquire write lock
+				if(d->lock_holder_pid == current->pid)
+				{
+					return -EDEADLK;
+				}
 				if(filp->f_flags & F_OSPRD_LOCKED) 
 					return -EDEADLK;				
 				osp_spin_lock(&d->mutex);
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->write_lock_set[d->write_lock_set_size++] = my_ticket;
+				d->lock_holder_pid = current->pid;
 				osp_spin_unlock(&d->mutex);
 			}
 		}
@@ -331,11 +343,16 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				return -ERESTARTSYS;						
 			}
 			else {	//acquire read lock
+				if(d->lock_holder_pid == current->pid)
+				{
+					return -EDEADLK;
+				}
 				if(filp->f_flags & F_OSPRD_LOCKED) 
 					return -EDEADLK;				
 				osp_spin_lock(&d->mutex);
 				filp->f_flags |= F_OSPRD_LOCKED;
 				d->read_lock_set[d->read_lock_set_size++] = my_ticket;
+				d->lock_holder_pid = current->pid;
 				osp_spin_unlock(&d->mutex);
 			}
 		}
@@ -356,7 +373,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 		// Your code here (instead of the next two lines).
 
-		
+		if(d->lock_holder_pid == current->pid)
+		{
+			return -EBUSY;
+		}
 
 		if(filp->f_flags & F_OSPRD_LOCKED) //If OSPRDIOCACQUIRE would block or return deadlock, OSPRDIOCTRYACQUIRE should return -EBUSY
 			return -EBUSY;
@@ -380,6 +400,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		  	
 			filp->f_flags |= F_OSPRD_LOCKED;
 			d->write_lock_set[d->write_lock_set_size++] = d->ticket_tail;
+			d->lock_holder_pid = current->pid;
 			osp_spin_unlock(&d->mutex);
 		  }
 		  else {
@@ -394,6 +415,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		    
 		    filp->f_flags |= F_OSPRD_LOCKED;
 		    d->read_lock_set[d->read_lock_set_size++] = d->ticket_tail;
+		    d->lock_holder_pid = current->pid;
 		    osp_spin_unlock(&d->mutex);
 		  }
 		  else {
@@ -444,6 +466,8 @@ static void osprd_setup(osprd_info_t *d)
 	for (i = 0; i < OSPRD_MAJOR; i++) {
 	  d->dead_ticket_set[i] = 0;
 	}
+
+	lock_holder_pid = -1;
 
 }
 
