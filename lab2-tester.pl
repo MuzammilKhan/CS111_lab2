@@ -166,19 +166,7 @@ close FOO;
       ') 2>/dev/null',
       "aX"
     ],
-    
-    # 18
-    [ #Test for device busy
-      '(./osprdaccess -r 4 -l -d 5) & (echo bar | ./osprdaccess -w -L)',
-      "ioctl OSPRDIOCTRYACQUIRE: Device or resource busy "
-    ],
-    
-    # 19
-    [ #Test for deadlock
-      '(echo foo | ./osprdaccess -w -l /dev/osprda /dev/osprda)',
-      "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
-    ],
-    
+
     );
 
 my($ntest) = 0;
