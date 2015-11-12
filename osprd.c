@@ -185,6 +185,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
  {
 	if (filp) 
 	{
+		eprintk("file unlock breakpoint 1\n");
 		osprd_info_t *d = file2osprd(filp);
 		int filp_writeable = filp->f_mode & FMODE_WRITE;
 		int filp_locked = filp->f_flags & F_OSPRD_LOCKED;
@@ -192,10 +193,12 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 
 		if(filp_locked)
 		{
+			eprintk("file unlock breakpoint 2\n");
 			osp_spin_lock(&d->mutex);
 			d->lock_holder_pid = -1;
 			if (filp_writeable) 
 			{	// need to release acquired write lock
+				eprintk("file unlock breakpoint 3\n");
 				d->write_lock_set_size--;
 				for (counter = 0; counter < OSPRD_MAJOR; counter++) {
 					if (d->write_lock_set[counter] == current->pid) {
@@ -204,6 +207,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 				}
 			} 
 			else {
+				eprintk("file unlock breakpoint 4\n");
 				d->read_lock_set_size--;
 				for (counter = 0; counter < OSPRD_MAJOR; counter++) {
 					if (d->read_lock_set[counter] == current->pid) {
@@ -211,9 +215,12 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 					}
 				}
 			}
-			if(d->ticket_head < d->ticket_tail)
+			if(d->ticket_head < d->ticket_tail){
+				eprintk("file unlock breakpoint 5\n");
 				d->ticket_head++;
+			}
 			else {
+				eprintk("file unlock breakpoint 6\n");
 				d->ticket_head = 0; // VERIFY: is this correct behaviour if head == tail
 				d->ticket_tail = 0;
 			}
