@@ -177,7 +177,7 @@ close FOO;
     # 19
     [ #Test for deadlock
       '(echo foo | ./osprdaccess -w -l /dev/osprda /dev/osprda)',
-      "ioctl OSPRDIOCQACQUIRE: Resource deadlock avoided"
+      "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
     ],
 
     #sanity check
