@@ -224,12 +224,12 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 				d->ticket_head = 0; // VERIFY: is this correct behaviour if head == tail
 				d->ticket_tail = 0;
 			}
-			//NOTE NEED TO ADD SOMETHING HERE
-			osp_spin_unlock(&d->mutex);
-
+			
 			//set flag to unlock
 			filp->f_flags &= ~F_OSPRD_LOCKED;
 			wake_up_all(&d->blockq);
+			osp_spin_unlock(&d->mutex);
+
 			return 0;
 		}
 	}
