@@ -179,6 +179,12 @@ close FOO;
       '(echo foo | ./osprdaccess -w -l /dev/osprda /dev/osprda)',
       "ioctl OSPRDIOCQACQUIRE: Resource deadlock avoided"
     ],
+
+    #sanity check
+    [ '(echo test1 | ./osprdaccess -w) && ' .
+      '(./osprdaccess -r 16 | hexdump -C)',
+      "00000000 74 65 73 74 31 0a 00 00 00 00 00 00 00 00 00 00 |test1...........| " .
+      "00000010" ],
     
     );
 
