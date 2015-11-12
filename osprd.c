@@ -319,7 +319,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 						     && d->read_lock_set_size == 0 )) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
-		  		
+		  		eprintk("break point 2.5 Recieved signal\n");
 			        d->dead_ticket_set[my_ticket] = 1;
 				return -ERESTARTSYS;
 			}
@@ -341,7 +341,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 						     && d->write_lock_set_size == 0)) {
 				//woken up by signal, returns -ERESTARTSYS
 				//TODO: MARK CURRENT THREAD AS NOT SERVED
-		  	
+		  		eprintk("break point 4.5 Recieved signal\n");
 			        d->dead_ticket_set[my_ticket] = 1;
 				return -ERESTARTSYS;						
 			}
